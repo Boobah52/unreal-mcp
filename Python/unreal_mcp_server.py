@@ -140,10 +140,10 @@ class UnrealConnection:
             return None
         
         try:
-            # Match Unity's command format exactly
+            # Match Unreal's command format
             command_obj = {
-                "type": command,  # Use "type" instead of "command"
-                "params": params or {}  # Use Unity's params or {} pattern
+                "command": command,  # UE plugin expects "command" field
+                "params": params or {}
             }
             
             # Send without newline, exactly like Unity
