@@ -204,36 +204,15 @@ class UnrealConnection:
 _unreal_connection: UnrealConnection = None
 
 def get_unreal_connection() -> Optional[UnrealConnection]:
-    """Get the connection to Unreal Engine."""
+    """Return the reusable bridge. send_command opens TCP per request.
+
+    Avoid opening sockets or sending probe bytes here: Unreal expects JSON
+    commands, and send_command already reconnects for every operation.
+    """
     global _unreal_connection
-    try:
-        if _unreal_connection is None:
-            _unreal_connection = UnrealConnection()
-            if not _unreal_connection.connect():
-                logger.warning("Could not connect to Unreal Engine")
-                _unreal_connection = None
-        else:
-            # Verify connection is still valid with a ping-like test
-            try:
-                # Simple test by sending an empty buffer to check if socket is still connected
-                _unreal_connection.socket.sendall(b'\x00')
-                logger.debug("Connection verified with ping test")
-            except Exception as e:
-                logger.warning(f"Existing connection failed: {e}")
-                _unreal_connection.disconnect()
-                _unreal_connection = None
-                # Try to reconnect
-                _unreal_connection = UnrealConnection()
-                if not _unreal_connection.connect():
-                    logger.warning("Could not reconnect to Unreal Engine")
-                    _unreal_connection = None
-                else:
-                    logger.info("Successfully reconnected to Unreal Engine")
-        
-        return _unreal_connection
-    except Exception as e:
-        logger.error(f"Error getting Unreal connection: {e}")
-        return None
+    if _unreal_connection is None:
+        _unreal_connection = UnrealConnection()
+    return _unreal_connection
 
 @asynccontextmanager
 async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
@@ -243,7 +222,7 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
     try:
         _unreal_connection = get_unreal_connection()
         if _unreal_connection:
-            logger.info("Connected to Unreal Engine on startup")
+            logger.info("Bridge initialized; TCP connects on each command")
         else:
             logger.warning("Could not connect to Unreal Engine on startup")
     except Exception as e:
