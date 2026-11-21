@@ -1,0 +1,29 @@
+# Source: GitHub's documented Python CI recipe:
+# https://docs.github.com/en/actions/tutorials/build-and-test-code/python
+# Validation boundary: this checks Python bridge contracts, NOT native Unreal behavior.
+name: Python bridge contract
+
+on:
+  push:
+    branches:
+      - review/avoid-invalid-socket-probe-20261121
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check syntax of bridge and test
+        run: python -m py_compile Python/unreal_mcp_server.py tests/test_unreal_bridge_contract.py
+      - name: Run isolated socket contract tests
+        run: python -m unittest discover -s tests -p 'test_unreal_bridge_contract.py' -v
