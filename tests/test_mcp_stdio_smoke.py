@@ -54,6 +54,11 @@ class McpEntrypointTests(unittest.TestCase):
                         response.isError,
                         "Disconnected Unreal must be an MCP error, not an empty level",
                     )
+                    self.assertIn(
+                        "Cannot inspect level: no response from Unreal",
+                        str(response),
+                        "Error must originate from the disconnected Unreal guard",
+                    )
         asyncio.run(check())
 
 
