@@ -81,7 +81,7 @@ uint32 FMCPServerRunnable::Run()
                         {
                             // Get command type
                             FString CommandType;
-                            if (JsonObject->TryGetStringField(TEXT("type"), CommandType))
+                            if (JsonObject->TryGetStringField(TEXT("command"), CommandType))
                             {
                                 // Execute command
                                 FString Response = Bridge->ExecuteCommand(CommandType, JsonObject->GetObjectField(TEXT("params")));
@@ -101,7 +101,7 @@ uint32 FMCPServerRunnable::Run()
                             }
                             else
                             {
-                                UE_LOG(LogTemp, Warning, TEXT("MCPServerRunnable: Missing 'type' field in command"));
+                                UE_LOG(LogTemp, Warning, TEXT("MCPServerRunnable: Missing 'command' field in command"));
                             }
                         }
                         else
