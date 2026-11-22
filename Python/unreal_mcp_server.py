@@ -93,15 +93,16 @@ class UnrealConnection:
                 
                 # Process the data received so far
                 data = b''.join(chunks)
-                decoded_data = data.decode('utf-8')
-                
-                # Try to parse as JSON to check if complete
+                # An individual recv() may end halfway through a UTF-8 character.
+                # Treat incomplete decoding and incomplete JSON alike until more
+                # network bytes arrive.
                 try:
+                    decoded_data = data.decode('utf-8')
                     json.loads(decoded_data)
                     logger.info(f"Received complete response ({len(data)} bytes)")
                     return data
-                except json.JSONDecodeError:
-                    # Not complete JSON yet, continue reading
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    # May be a partial character or JSON document; read more bytes.
                     logger.debug(f"Received partial response, waiting for more data...")
                     continue
                 except Exception as e:
