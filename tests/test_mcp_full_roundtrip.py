@@ -45,6 +45,8 @@ class BackendHandler(socketserver.BaseRequestHandler):
             "marker": "mcp-roundtrip-verified",
             "echo": request,
         }
+        if request["command"] == "get_actors_in_level":
+            response["actors"] = []
         self.request.sendall(json.dumps(response).encode("utf-8"))
 
 
@@ -75,15 +77,23 @@ class McpRealProcessRoundtripTests(unittest.TestCase):
                     )
                     self.assertFalse(response.isError, response)
                     self.assertIn("mcp-roundtrip-verified", str(response))
+                    empty_level = await asyncio.wait_for(
+                        session.call_tool("get_actors_in_level", {}), timeout=20
+                    )
+                    self.assertFalse(
+                        empty_level.isError,
+                        "A valid empty actor list must remain a non-error",
+                    )
 
         try:
             asyncio.run(run_client())
-            self.assertEqual(len(backend.received), 1, backend.received)
+            self.assertEqual(len(backend.received), 2, backend.received)
             self.assertEqual(backend.received[0]["command"], "create_blueprint")
             self.assertEqual(
                 backend.received[0]["params"],
                 {"name": "BP_RemoteTest", "parent_class": "Actor"},
             )
+            self.assertEqual(backend.received[1]["command"], "get_actors_in_level")
         finally:
             backend.shutdown()
             backend.server_close()
