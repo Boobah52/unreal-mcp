@@ -28,6 +28,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Check syntax of bridge and test
-        run: python -m py_compile Python/unreal_mcp_server.py tests/test_unreal_bridge_contract.py
+        run: python -m compileall -q Python/unreal_mcp_server.py tests
       - name: Run isolated socket contract tests
-        run: python -m unittest discover -s tests -p 'test_unreal_bridge_contract.py' -v
+        run: python -m unittest discover -s tests -p 'test_unreal_bridge*.py' -v
