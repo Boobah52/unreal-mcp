@@ -39,16 +39,16 @@ class RequestHandler(socketserver.BaseRequestHandler):
                 continue
         self.server.requests.append((command, raw_request))
         if command["command"] == "fail":
-            data = json.dumps({"status": "error", "error": "expected rejection"}).encode("utf-8")
+            data = json.dumps({"status": "error", "error": "expected rejection"}).encode("utf-8") + b"\n"
             self.request.sendall(data)
         elif command["command"] == "unicode":
-            data = json.dumps({"status": "ok", "message": "café 🐝"}, ensure_ascii=False).encode("utf-8")
+            data = json.dumps({"status": "ok", "message": "café 🐝"}, ensure_ascii=False).encode("utf-8") + b"\n"
             cut = data.index("é".encode("utf-8")) + 1
             self.request.sendall(data[:cut])
             time.sleep(0.10)
             self.request.sendall(data[cut:])
         else:
-            data = json.dumps({"status": "ok", "success": True, "command": command["command"]}).encode("utf-8")
+            data = json.dumps({"status": "ok", "success": True, "command": command["command"]}).encode("utf-8") + b"\n"
             self.request.sendall(data)
 
 
