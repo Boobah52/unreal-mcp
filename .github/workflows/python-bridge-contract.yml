@@ -49,5 +49,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_cpp_tcp_interop.py' -v
       - name: Check actual native C++ / Python protocol agreement
         run: python -m unittest discover -s tests -p 'test_native_protocol_contract.py' -v
+      - name: Prevent silent failure results in registered MCP tools
+        run: python -m unittest discover -s tests -p 'test_mcp_registration_guard.py' -v
       - name: Run MCP entrypoint and full TCP round-trip tests
         run: python -m unittest discover -s tests -p 'test_mcp*.py' -v
