@@ -48,6 +48,20 @@ class NativeProtocolContractTests(unittest.TestCase):
             f"Python sends commands absent from C++ ExecuteCommand: {sorted(python_commands - native)}",
         )
 
+    def test_all_bundled_example_scripts_use_native_wire_contract(self):
+        paths = sorted((ROOT / "Python/scripts").rglob("*.py"))
+        self.assertGreaterEqual(len(paths), 7)
+        for path in paths:
+            with self.subTest(path=path.relative_to(ROOT)):
+                text = path.read_text(encoding="utf-8")
+                ast.parse(text)
+                self.assertNotIn('"type": command', text)
+                self.assertIn('"command": command', text)
+                self.assertIn(
+                    "sock.sendall((command_json + '\\n').encode('utf-8'))",
+                    text,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()
