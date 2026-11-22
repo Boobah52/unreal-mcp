@@ -42,14 +42,14 @@ def send_command(command: str, params: Dict[str, Any]) -> Optional[Dict[str, Any
         try:
             # Create command object
             command_obj = {
-                "type": command,
+                "command": command,
                 "params": params
             }
             
             # Convert to JSON and send
             command_json = json.dumps(command_obj)
             logger.info(f"Sending command: {command_json}")
-            sock.sendall(command_json.encode('utf-8'))
+            sock.sendall((command_json + '\n').encode('utf-8'))
             
             # Receive response
             chunks = []

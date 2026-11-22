@@ -7,6 +7,7 @@ This module provides tools for creating and manipulating UMG Widget Blueprints i
 import logging
 from typing import Dict, List, Any
 from mcp.server.fastmcp import FastMCP, Context
+from tools._bridge_validation import require_unreal_success
 
 # Get logger
 logger = logging.getLogger("UnrealMCP")
@@ -38,7 +39,7 @@ def register_umg_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             params = {
                 "widget_name": widget_name,
@@ -48,10 +49,11 @@ def register_umg_tools(mcp: FastMCP):
             
             logger.info(f"Creating UMG Widget Blueprint with params: {params}")
             response = unreal.send_command("create_umg_widget_blueprint", params)
+            response = require_unreal_success("create_umg_widget_blueprint", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Create UMG Widget Blueprint response: {response}")
             return response
@@ -59,7 +61,7 @@ def register_umg_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error creating UMG Widget Blueprint: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
 
     @mcp.tool()
     def add_text_block_to_widget(
@@ -93,7 +95,7 @@ def register_umg_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             params = {
                 "widget_name": widget_name,
@@ -107,10 +109,11 @@ def register_umg_tools(mcp: FastMCP):
             
             logger.info(f"Adding Text Block to widget with params: {params}")
             response = unreal.send_command("add_text_block_to_widget", params)
+            response = require_unreal_success("add_text_block_to_widget", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Add Text Block response: {response}")
             return response
@@ -118,7 +121,7 @@ def register_umg_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error adding Text Block to widget: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
 
     @mcp.tool()
     def add_button_to_widget(
@@ -154,7 +157,7 @@ def register_umg_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             params = {
                 "widget_name": widget_name,
@@ -169,10 +172,11 @@ def register_umg_tools(mcp: FastMCP):
             
             logger.info(f"Adding Button to widget with params: {params}")
             response = unreal.send_command("add_button_to_widget", params)
+            response = require_unreal_success("add_button_to_widget", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Add Button response: {response}")
             return response
@@ -180,7 +184,7 @@ def register_umg_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error adding Button to widget: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
 
     @mcp.tool()
     def bind_widget_event(
@@ -208,7 +212,7 @@ def register_umg_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             # If no function name provided, create one from component and event names
             if not function_name:
@@ -223,10 +227,11 @@ def register_umg_tools(mcp: FastMCP):
             
             logger.info(f"Binding widget event with params: {params}")
             response = unreal.send_command("bind_widget_event", params)
+            response = require_unreal_success("bind_widget_event", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Bind widget event response: {response}")
             return response
@@ -234,7 +239,7 @@ def register_umg_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error binding widget event: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
 
     @mcp.tool()
     def add_widget_to_viewport(
@@ -258,7 +263,7 @@ def register_umg_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             params = {
                 "widget_name": widget_name,
@@ -267,10 +272,11 @@ def register_umg_tools(mcp: FastMCP):
             
             logger.info(f"Adding widget to viewport with params: {params}")
             response = unreal.send_command("add_widget_to_viewport", params)
+            response = require_unreal_success("add_widget_to_viewport", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Add widget to viewport response: {response}")
             return response
@@ -278,7 +284,7 @@ def register_umg_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error adding widget to viewport: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
 
     @mcp.tool()
     def set_text_block_binding(
@@ -306,7 +312,7 @@ def register_umg_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             params = {
                 "widget_name": widget_name,
@@ -317,10 +323,11 @@ def register_umg_tools(mcp: FastMCP):
             
             logger.info(f"Setting text block binding with params: {params}")
             response = unreal.send_command("set_text_block_binding", params)
+            response = require_unreal_success("set_text_block_binding", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Set text block binding response: {response}")
             return response
@@ -328,6 +335,6 @@ def register_umg_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error setting text block binding: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
 
     logger.info("UMG tools registered successfully") 

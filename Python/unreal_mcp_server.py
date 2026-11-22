@@ -79,50 +79,43 @@ class UnrealConnection:
         self.connected = False
 
     def receive_full_response(self, sock, buffer_size=4096) -> bytes:
-        """Receive a complete response from Unreal, handling chunked data."""
-        chunks = []
-        sock.settimeout(5)  # 5 second timeout
+        """Read one bounded, newline-terminated UTF-8 JSON reply.
+
+        Do not report a syntactically complete but unterminated JSON fragment as
+        success. TCP reads are arbitrary byte chunks, not message boundaries.
+        """
+        max_response_bytes = 8 * 1024 * 1024
+        received = bytearray()
+        sock.settimeout(120)
         try:
             while True:
                 chunk = sock.recv(buffer_size)
                 if not chunk:
-                    if not chunks:
-                        raise Exception("Connection closed before receiving data")
-                    break
-                chunks.append(chunk)
-                
-                # Process the data received so far
-                data = b''.join(chunks)
-                decoded_data = data.decode('utf-8')
-                
-                # Try to parse as JSON to check if complete
-                try:
-                    json.loads(decoded_data)
-                    logger.info(f"Received complete response ({len(data)} bytes)")
-                    return data
-                except json.JSONDecodeError:
-                    # Not complete JSON yet, continue reading
-                    logger.debug(f"Received partial response, waiting for more data...")
+                    raise ConnectionError(
+                        "Unreal closed the connection before response LF terminator"
+                    )
+                received.extend(chunk)
+                if len(received) > max_response_bytes + 2:
+                    raise ValueError("Unreal response exceeded 8 MiB limit")
+                terminator = received.find(b'\n')
+                if terminator < 0:
                     continue
-                except Exception as e:
-                    logger.warning(f"Error processing response chunk: {str(e)}")
-                    continue
-        except socket.timeout:
-            logger.warning("Socket timeout during receive")
-            if chunks:
-                # If we have some data already, try to use it
-                data = b''.join(chunks)
-                try:
-                    json.loads(data.decode('utf-8'))
-                    logger.info(f"Using partial response after timeout ({len(data)} bytes)")
-                    return data
-                except:
-                    pass
-            raise Exception("Timeout receiving Unreal response")
-        except Exception as e:
-            logger.error(f"Error during receive: {str(e)}")
-            raise
-    
+
+                line = bytes(received[:terminator])
+                if received[terminator + 1:]:
+                    raise ValueError("Multiple responses on single-request connection")
+                if line.endswith(b'\r'):
+                    line = line[:-1]
+                if len(line) > max_response_bytes:
+                    raise ValueError("Unreal response exceeded 8 MiB limit")
+                parsed = json.loads(line.decode('utf-8'))
+                if not isinstance(parsed, dict):
+                    raise ValueError("Unreal response must be a JSON object")
+                logger.info("Received framed Unreal response (%d bytes)", len(line))
+                return line
+        except socket.timeout as e:
+            raise TimeoutError("Timed out waiting for complete Unreal JSON response") from e
+
     def send_command(self, command: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
         """Send a command to Unreal Engine and get the response."""
         # Always reconnect for each command, since Unreal closes the connection after each command
@@ -146,10 +139,13 @@ class UnrealConnection:
                 "params": params or {}
             }
             
-            # Send without newline, exactly like Unity
-            command_json = json.dumps(command_obj)
-            logger.info(f"Sending command: {command_json}")
-            self.socket.sendall(command_json.encode('utf-8'))
+            # Native bridge uses bounded JSON-lines: each request ends in LF.
+            command_json = json.dumps(command_obj, ensure_ascii=False, separators=(',', ':'))
+            payload = (command_json + '\n').encode('utf-8')
+            if len(payload) > 1024 * 1024 + 1:
+                raise ValueError("JSON command exceeds native 1 MiB frame limit")
+            logger.info("Sending %d-byte JSON command: %s", len(payload), command)
+            self.socket.sendall(payload)
             
             # Read response using improved handler
             response_data = self.receive_full_response(self.socket)
@@ -204,36 +200,15 @@ class UnrealConnection:
 _unreal_connection: UnrealConnection = None
 
 def get_unreal_connection() -> Optional[UnrealConnection]:
-    """Get the connection to Unreal Engine."""
+    """Return the reusable bridge. send_command opens TCP per request.
+
+    Avoid opening sockets or sending probe bytes here: Unreal expects JSON
+    commands, and send_command already reconnects for every operation.
+    """
     global _unreal_connection
-    try:
-        if _unreal_connection is None:
-            _unreal_connection = UnrealConnection()
-            if not _unreal_connection.connect():
-                logger.warning("Could not connect to Unreal Engine")
-                _unreal_connection = None
-        else:
-            # Verify connection is still valid with a ping-like test
-            try:
-                # Simple test by sending an empty buffer to check if socket is still connected
-                _unreal_connection.socket.sendall(b'\x00')
-                logger.debug("Connection verified with ping test")
-            except Exception as e:
-                logger.warning(f"Existing connection failed: {e}")
-                _unreal_connection.disconnect()
-                _unreal_connection = None
-                # Try to reconnect
-                _unreal_connection = UnrealConnection()
-                if not _unreal_connection.connect():
-                    logger.warning("Could not reconnect to Unreal Engine")
-                    _unreal_connection = None
-                else:
-                    logger.info("Successfully reconnected to Unreal Engine")
-        
-        return _unreal_connection
-    except Exception as e:
-        logger.error(f"Error getting Unreal connection: {e}")
-        return None
+    if _unreal_connection is None:
+        _unreal_connection = UnrealConnection()
+    return _unreal_connection
 
 @asynccontextmanager
 async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
@@ -243,7 +218,7 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
     try:
         _unreal_connection = get_unreal_connection()
         if _unreal_connection:
-            logger.info("Connected to Unreal Engine on startup")
+            logger.info("Bridge initialized; TCP connects on each command")
         else:
             logger.warning("Could not connect to Unreal Engine on startup")
     except Exception as e:
@@ -261,7 +236,7 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
 # Initialize server
 mcp = FastMCP(
     "UnrealMCP",
-    description="Unreal Engine integration via Model Context Protocol",
+    instructions="Unreal Engine integration via Model Context Protocol",
     lifespan=server_lifespan
 )
 
