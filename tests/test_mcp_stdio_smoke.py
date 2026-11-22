@@ -35,6 +35,27 @@ class McpEntrypointTests(unittest.TestCase):
 
         asyncio.run(check())
 
+    def test_actor_lookup_reports_disconnected_editor_as_error(self):
+        # Fresh CI runners have no Unreal listener. An empty success result
+        # must never be mistaken for a verified empty Unreal level.
+        async def check():
+            params = StdioServerParameters(
+                command=sys.executable,
+                args=[str(SERVER)],
+                env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            )
+            async with stdio_client(params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await asyncio.wait_for(session.initialize(), timeout=20)
+                    response = await asyncio.wait_for(
+                        session.call_tool("get_actors_in_level", {}), timeout=20
+                    )
+                    self.assertTrue(
+                        response.isError,
+                        "Disconnected Unreal must be an MCP error, not an empty level",
+                    )
+        asyncio.run(check())
+
 
 if __name__ == "__main__":
     unittest.main()
