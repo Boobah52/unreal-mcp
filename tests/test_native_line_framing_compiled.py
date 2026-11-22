@@ -17,16 +17,24 @@ HEADER_DIR = ROOT / "MCPGameProject" / "Plugins" / "UnrealMCP" / "Source" / "Unr
 
 class NativeFrameTests(unittest.TestCase):
     def test_native_line_framaer_compiles_and_exercises_fragmentation(self):
-        # GitHub hosted Windows and Ubuntu images expose LLVM Clang.
-        compiler = shutil.which("clang++") or shutil.which("g++")
-        self.assertIsNotNone(compiler, "C++ compiler required for this acceptance test")
+        # Match the runner's native compiler/toolchain rather than asking an
+        # older Clang to consume a newer MSVC standard library.
+        if os.name == "nt":
+            compiler = shutil.which("cl")
+            self.assertIsNotNone(compiler, "MSVC developer environment required on Windows")
+        else:
+            compiler = shutil.which("clang++") or shutil.which("g++")
+            self.assertIsNotNone(compiler, "C++17 compiler required")
         with tempfile.TemporaryDirectory() as temp:
             executable = Path(temp) / ("native-frame-test.exe" if os.name == "nt" else "native-frame-test")
-            subprocess.run(
-                [compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
-                 "-I", str(HEADER_DIR), str(CXX), "-o", str(executable)],
-                check=True, timeout=90,
-            )
+            if os.name == "nt":
+                args = [compiler, "/nologo", "/std:c++17", "/EHsc", "/W4",
+                        "/WX", "/utf-8", "/I" + str(HEADER_DIR),
+                        str(CXX), "/Fe:" + str(executable)]
+            else:
+                args = [compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror",
+                        "-I", str(HEADER_DIR), str(CXX), "-o", str(executable)]
+            subprocess.run(args, check=True, timeout=90)
             result = subprocess.run([str(executable)], check=True, capture_output=True,
                                     text=True, timeout=25)
             self.assertIn("native line-framing tests passed", result.stdout)
