@@ -7,6 +7,7 @@ This module provides tools for controlling the Unreal Editor viewport and other 
 import logging
 from typing import Dict, List, Any, Optional
 from mcp.server.fastmcp import FastMCP, Context
+from tools._bridge_validation import require_unreal_success
 
 # Get logger
 logger = logging.getLogger("UnrealMCP")
@@ -54,28 +55,27 @@ def register_editor_tools(mcp: FastMCP):
 
     @mcp.tool()
     def find_actors_by_name(ctx: Context, pattern: str) -> List[str]:
-        """Find actors by name pattern."""
+        """Return matching actor names; never mistake a connection failure for no matches."""
         from unreal_mcp_server import get_unreal_connection
-        
+
         try:
             unreal = get_unreal_connection()
-            if not unreal:
-                logger.warning("Failed to connect to Unreal Engine")
-                return []
-                
-            response = unreal.send_command("find_actors_by_name", {
-                "pattern": pattern
-            })
-            
-            if not response:
-                return []
-                
-            return response.get("actors", [])
-            
-        except Exception as e:
-            logger.error(f"Error finding actors: {e}")
-            return []
-    
+            if unreal is None:
+                raise ConnectionError("Unreal connection unavailable")
+            response = require_unreal_success(
+                "find_actors_by_name",
+                unreal.send_command("find_actors_by_name", {"pattern": pattern}),
+            )
+            actors = response["result"].get("actors")
+            if not isinstance(actors, list):
+                raise ValueError("find_actors_by_name: missing actors list")
+            if not all(isinstance(actor, dict) and isinstance(actor.get("name"), str) for actor in actors):
+                raise ValueError("find_actors_by_name: invalid actor record")
+            return [actor["name"] for actor in actors]
+        except Exception:
+            logger.exception("Failed to search Unreal actors")
+            raise
+
     @mcp.tool()
     def spawn_actor(
         ctx: Context,
@@ -146,24 +146,20 @@ def register_editor_tools(mcp: FastMCP):
     
     @mcp.tool()
     def delete_actor(ctx: Context, name: str) -> Dict[str, Any]:
-        """Delete an actor by name."""
+        """Delete a named actor; failures must surface as MCP tool errors."""
         from unreal_mcp_server import get_unreal_connection
-        
+
         try:
             unreal = get_unreal_connection()
-            if not unreal:
-                logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
-                
-            response = unreal.send_command("delete_actor", {
-                "name": name
-            })
-            return response or {}
-            
-        except Exception as e:
-            logger.error(f"Error deleting actor: {e}")
-            return {}
-    
+            if unreal is None:
+                raise ConnectionError("Unreal connection unavailable")
+            return require_unreal_success(
+                "delete_actor", unreal.send_command("delete_actor", {"name": name})
+            )
+        except Exception:
+            logger.exception("Failed to delete Unreal actor")
+            raise
+
     @mcp.tool()
     def set_actor_transform(
         ctx: Context,
