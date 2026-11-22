@@ -42,13 +42,20 @@ class BackendHandler(socketserver.BaseRequestHandler):
             break
         self.server.received.append(request)
         response = {
-            "status": "ok",
-            "success": True,
-            "marker": "mcp-roundtrip-verified",
-            "echo": request,
+            "status": "success",
+            "result": {
+                "marker": "mcp-roundtrip-verified",
+                "echo": request,
+            },
         }
         if request["command"] == "get_actors_in_level":
-            response["actors"] = []
+            response["result"]["actors"] = []
+        if request["command"] == "find_actors_by_name":
+            response["result"]["actors"] = [
+                {"name": "ActorFound", "class": "StaticMeshActor"}
+            ]
+        if request["params"].get("name") == "ForceNativeError":
+            response = {"status": "error", "error": "native-rejection-marker"}
         self.request.sendall(json.dumps(response).encode("utf-8") + b"\n")
 
 
@@ -86,16 +93,41 @@ class McpRealProcessRoundtripTests(unittest.TestCase):
                         empty_level.isError,
                         "A valid empty actor list must remain a non-error",
                     )
+                    found = await asyncio.wait_for(
+                        session.call_tool("find_actors_by_name", {"pattern": "ActorFound"}),
+                        timeout=20,
+                    )
+                    self.assertFalse(found.isError, found)
+                    self.assertIn("ActorFound", str(found))
+                    for command, args in (
+                        ("delete_actor", {"name": "ActorFound"}),
+                        ("compile_blueprint", {"blueprint_name": "BP_RemoteTest"}),
+                    ):
+                        result = await asyncio.wait_for(
+                            session.call_tool(command, args), timeout=20
+                        )
+                        self.assertFalse(result.isError, result)
+                    rejected = await asyncio.wait_for(
+                        session.call_tool("delete_actor", {"name": "ForceNativeError"}),
+                        timeout=20,
+                    )
+                    self.assertTrue(rejected.isError, rejected)
+                    self.assertIn("native-rejection-marker", str(rejected))
+
 
         try:
             asyncio.run(run_client())
-            self.assertEqual(len(backend.received), 2, backend.received)
+            self.assertEqual(len(backend.received), 6, backend.received)
             self.assertEqual(backend.received[0]["command"], "create_blueprint")
             self.assertEqual(
                 backend.received[0]["params"],
                 {"name": "BP_RemoteTest", "parent_class": "Actor"},
             )
-            self.assertEqual(backend.received[1]["command"], "get_actors_in_level")
+            self.assertEqual(
+                [command["command"] for command in backend.received],
+                ["create_blueprint", "get_actors_in_level", "find_actors_by_name",
+                 "delete_actor", "compile_blueprint", "delete_actor"],
+            )
         finally:
             backend.shutdown()
             backend.server_close()
