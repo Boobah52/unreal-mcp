@@ -46,6 +46,7 @@ class BridgeContractTests(unittest.TestCase):
             SO_RCVBUF=socket_module.SO_RCVBUF,
             SO_SNDBUF=socket_module.SO_SNDBUF,
             socket=open_socket,
+            timeout=socket_module.timeout,
         )
         tree = ast.parse(SOURCE.read_text(encoding="utf-8"))
         nodes = [
@@ -102,6 +103,7 @@ class BridgeContractTests(unittest.TestCase):
         self.ns["socket"].socket = factory
         actual = self.ns["get_unreal_connection"]().send_command("ping", {})
         self.assertEqual(actual["status"], "error", actual)
+        self.assertIn("before response LF terminator", actual["error"])
 
     def test_fragmented_utf8_response_with_lf(self):
         def factory(*_):
