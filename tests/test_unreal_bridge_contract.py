@@ -17,7 +17,7 @@ SOURCE = Path(__file__).resolve().parents[1] / "Python" / "unreal_mcp_server.py"
 class FakeSocket:
     def __init__(self):
         self.written = []
-        self.responses = [b'{"status":"ok","success":true}']
+        self.responses = [b'{"status":"ok","success":true}\n']
 
     def settimeout(self, _): pass
     def setsockopt(self, *_): pass
