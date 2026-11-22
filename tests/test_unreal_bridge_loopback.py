@@ -32,11 +32,13 @@ class RequestHandler(socketserver.BaseRequestHandler):
             if not chunk:
                 raise ConnectionError("Client closed before sending JSON request")
             raw_request += chunk
-            try:
-                command = json.loads(raw_request.decode("utf-8"))
-                break
-            except (UnicodeDecodeError, json.JSONDecodeError):
+            if b"\n" not in raw_request:
                 continue
+            framed, separator, extra = raw_request.partition(b"\n")
+            if extra:
+                raise ValueError("Extra bytes after one JSON command")
+            command = json.loads(framed.decode("utf-8"))
+            break
         self.server.requests.append((command, raw_request))
         if command["command"] == "fail":
             data = json.dumps({"status": "error", "error": "expected rejection"}).encode("utf-8") + b"\n"
@@ -92,6 +94,7 @@ class ActualTcpContractTests(unittest.TestCase):
         self.assertEqual(first["status"], "ok")
         self.assertEqual(second["command"], "compile_blueprint")
         self.assertEqual(len(self.server.requests), 2)
+        self.assertTrue(all(raw.endswith(b"\n") for _, raw in self.server.requests))
         self.assertEqual(self.server.requests[1][0]["params"]["blueprint_name"], "BP_Trial")
         self.assertTrue(all(bytes([0]) not in raw for _, raw in self.server.requests))
 
