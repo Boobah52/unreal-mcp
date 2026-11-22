@@ -90,6 +90,32 @@ class BridgeContractTests(unittest.TestCase):
             self.assertNotIn(bytes([0]), payload)
             self.assertIsInstance(json.loads(payload.decode("utf-8")), dict)
 
+    def test_unterminated_response_is_not_success(self):
+        # The native contract is one JSON line per connection. A fragment that
+        # happens to be parseable is not a completed framed response.
+        def factory(*_):
+            sock = FakeSocket()
+            sock.responses = [b'{"status":"ok"}']  # No terminating LF.
+            self.opened.append(sock)
+            return sock
+
+        self.ns["socket"].socket = factory
+        actual = self.ns["get_unreal_connection"]().send_command("ping", {})
+        self.assertEqual(actual["status"], "error", actual)
+
+    def test_fragmented_utf8_response_with_lf(self):
+        def factory(*_):
+            sock = FakeSocket()
+            sock.responses = [b'{"status":"ok","message":"caf\xc3',
+                              b'\xa9"}\r', b'\n']
+            self.opened.append(sock)
+            return sock
+
+        self.ns["socket"].socket = factory
+        actual = self.ns["get_unreal_connection"]().send_command("ping", {})
+        self.assertEqual(actual["status"], "ok", actual)
+        self.assertEqual(actual["message"], "café")
+
 
 if __name__ == "__main__":
     unittest.main()
