@@ -193,7 +193,7 @@ def register_editor_tools(mcp: FastMCP):
             
         except Exception as e:
             logger.error(f"Error setting transform: {e}")
-            raise RuntimeError("Unreal tool returned an empty or invalid response")
+            raise
     
     @mcp.tool()
     def get_actor_properties(ctx: Context, name: str) -> Dict[str, Any]:
@@ -214,7 +214,7 @@ def register_editor_tools(mcp: FastMCP):
             
         except Exception as e:
             logger.error(f"Error getting properties: {e}")
-            raise RuntimeError("Unreal tool returned an empty or invalid response")
+            raise
 
     @mcp.tool()
     def set_actor_property(
