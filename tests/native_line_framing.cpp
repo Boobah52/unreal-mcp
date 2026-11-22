@@ -51,6 +51,54 @@ int main() {
         const string empty = "\n";
         assert(!framer.Consume(reinterpret_cast<const std::uint8_t*>(empty.data()), empty.size(), frames));
     }
+    {
+        // Exercise every possible contiguous TCP chunk size for a UTF-8
+        // multibyte document; byte segmentation must not change the result.
+        const string request = R"({"command":"echo","name":"café 🐝","value":"a\nb"})" "\n";
+        for (std::size_t chunkSize = 1; chunkSize <= request.size(); ++chunkSize) {
+            FMCPJsonLineFramer framer(4096);
+            vector<string> frames;
+            for (std::size_t offset = 0; offset < request.size();) {
+                const std::size_t remaining = request.size() - offset;
+                const std::size_t amount = (chunkSize < remaining) ? chunkSize : remaining;
+                assert(framer.Consume(
+                    reinterpret_cast<const std::uint8_t*>(request.data() + offset),
+                    amount, frames));
+                offset += amount;
+            }
+            assert(frames.size() == 1);
+            assert(frames[0] == request.substr(0, request.size()-1));
+            assert(!framer.HasBufferedBytes());
+        }
+    }
+    {
+        // Boundaries are in bytes, not Unicode code points.
+        FMCPJsonLineFramer framer(8);
+        vector<string> frames;
+        const string exactlyAtLimit = "12345678\r\n";
+        assert(framer.Consume(
+            reinterpret_cast<const std::uint8_t*>(exactlyAtLimit.data()),
+            exactlyAtLimit.size(), frames));
+        assert(frames.size() == 1 && frames[0] == "12345678");
+    }
+    {
+        FMCPJsonLineFramer framer(80);
+        vector<string> frames;
+        const string withNul("hi\0bye\n", 7);
+        assert(!framer.Consume(
+            reinterpret_cast<const std::uint8_t*>(withNul.data()),
+            withNul.size(), frames));
+    }
+    {
+        FMCPJsonLineFramer framer(1024);
+        vector<string> frames;
+        const string pipelined = "{\"command\":\"one\"}\n{\"command\":\"unfinished\"";
+        assert(framer.Consume(
+            reinterpret_cast<const std::uint8_t*>(pipelined.data()),
+            pipelined.size(), frames));
+        assert(frames.size() == 1);
+        assert(framer.HasBufferedBytes());
+    }
     std::cout << "native line-framing tests passed" << std::endl;
     return 0;
 }
