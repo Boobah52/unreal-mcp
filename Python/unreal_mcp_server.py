@@ -147,10 +147,13 @@ class UnrealConnection:
                 "params": params or {}
             }
             
-            # Send without newline, exactly like Unity
-            command_json = json.dumps(command_obj)
-            logger.info(f"Sending command: {command_json}")
-            self.socket.sendall(command_json.encode('utf-8'))
+            # Native bridge uses bounded JSON-lines: each request ends in LF.
+            command_json = json.dumps(command_obj, ensure_ascii=False, separators=(',', ':'))
+            payload = (command_json + '\n').encode('utf-8')
+            if len(payload) > 1024 * 1024 + 1:
+                raise ValueError("JSON command exceeds native 1 MiB frame limit")
+            logger.info("Sending %d-byte JSON command: %s", len(payload), command)
+            self.socket.sendall(payload)
             
             # Read response using improved handler
             response_data = self.receive_full_response(self.socket)
