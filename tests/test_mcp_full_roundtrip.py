@@ -47,7 +47,7 @@ class BackendHandler(socketserver.BaseRequestHandler):
         }
         if request["command"] == "get_actors_in_level":
             response["actors"] = []
-        self.request.sendall(json.dumps(response).encode("utf-8"))
+        self.request.sendall(json.dumps(response).encode("utf-8") + b"\n")
 
 
 class McpRealProcessRoundtripTests(unittest.TestCase):
