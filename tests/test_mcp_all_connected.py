@@ -46,6 +46,8 @@ class FakeNativeHandler(socketserver.BaseRequestHandler):
                 "actors": [{"name": "TestMatch", "class": "StaticMeshActor"}],
             },
         }
+        if self.server.reject_native:
+            response = {"status": "error", "error": "native-rejection-for-tool"}
         self.request.sendall(json.dumps(response).encode("utf-8") + b"\n")
 
 
@@ -53,6 +55,7 @@ class AllToolsNativeSuccessEnvelopeTests(unittest.TestCase):
     def test_all_registered_tools_accept_native_success_envelope(self):
         server = LocalServer(("127.0.0.1", 55557), FakeNativeHandler)
         server.requests = []
+        server.reject_native = False
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
 
@@ -77,10 +80,25 @@ class AllToolsNativeSuccessEnvelopeTests(unittest.TestCase):
                             failures.append(f"{name}: exception {ex}")
                     self.assertFalse(failures,
                                      "Positive native-envelope regressions:\n" + "\n".join(failures))
+                    server.reject_native = True
+                    native_errors = []
+                    for name, arguments in EXAMPLES.items():
+                        try:
+                            output = await asyncio.wait_for(
+                                session.call_tool(name, arguments), timeout=12
+                            )
+                            if not output.isError or "native-rejection-for-tool" not in str(output):
+                                native_errors.append(f"{name}: {str(output)[:300]}")
+                        except Exception as ex:
+                            native_errors.append(f"{name}: exception {ex}")
+                    self.assertFalse(
+                        native_errors,
+                        "Native error envelopes were not propagated:\n" + "\n".join(native_errors),
+                    )
 
         try:
             asyncio.run(check())
-            self.assertEqual(len(server.requests), len(EXAMPLES),
+            self.assertEqual(len(server.requests), 2 * len(EXAMPLES),
                              "One native request per tool required")
             commands = [v["command"] for v in server.requests]
             self.assertEqual(set(commands), set(EXAMPLES),
