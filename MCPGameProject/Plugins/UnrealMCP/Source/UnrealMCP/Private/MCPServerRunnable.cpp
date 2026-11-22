@@ -124,7 +124,7 @@ uint32 FMCPServerRunnable::Run()
                         bRequestComplete = true;
                         // The Python client opens a fresh socket per command.
                         // Reject pipelined commands rather than silently dropping any.
-                        if (CompleteRequests.size() != 1)
+                        if (CompleteRequests.size() != 1 || Framer.HasBufferedBytes())
                         {
                             SendMCPReply(ClientSocket.Get(), TEXT("{\"status\":\"error\",\"error\":\"one_request_per_connection\"}"));
                             break;
