@@ -16,40 +16,41 @@ def register_editor_tools(mcp: FastMCP):
     
     @mcp.tool()
     def get_actors_in_level(ctx: Context) -> List[Dict[str, Any]]:
-        """Get a list of all actors in the current level."""
+        """List actors in the connected Unreal level.
+
+        A disconnected or invalid response is an error, NEVER an empty level.
+        SDK v1 maps raised tool exceptions to CallToolResult(isError=True).
+        """
         from unreal_mcp_server import get_unreal_connection
-        
+
         try:
             unreal = get_unreal_connection()
-            if not unreal:
-                logger.warning("Failed to connect to Unreal Engine")
-                return []
-                
+            if unreal is None:
+                raise ConnectionError("Cannot inspect level: Unreal connection unavailable")
+
             response = unreal.send_command("get_actors_in_level", {})
-            
             if not response:
-                logger.warning("No response from Unreal Engine")
-                return []
-                
-            # Log the complete response for debugging
-            logger.info(f"Complete response from Unreal: {response}")
-            
-            # Check response format
-            if "result" in response and "actors" in response["result"]:
+                raise ConnectionError("Cannot inspect level: no response from Unreal")
+
+            if response.get("status") == "error" or response.get("success") is False:
+                raise RuntimeError(
+                    "Cannot inspect level: "
+                    + str(response.get("error") or response.get("message") or "Unreal reported an error")
+                )
+
+            if isinstance(response.get("result"), dict) and isinstance(response["result"].get("actors"), list):
                 actors = response["result"]["actors"]
-                logger.info(f"Found {len(actors)} actors in level")
-                return actors
-            elif "actors" in response:
+            elif isinstance(response.get("actors"), list):
                 actors = response["actors"]
-                logger.info(f"Found {len(actors)} actors in level")
-                return actors
-                
-            logger.warning(f"Unexpected response format: {response}")
-            return []
-            
+            else:
+                raise ValueError("Cannot inspect level: invalid actors response from Unreal")
+
+            logger.info("Found %d actors in level", len(actors))
+            return actors
+
         except Exception as e:
-            logger.error(f"Error getting actors: {e}")
-            return []
+            logger.error("Actor lookup failed: %s", e)
+            raise
 
     @mcp.tool()
     def find_actors_by_name(ctx: Context, pattern: str) -> List[str]:
