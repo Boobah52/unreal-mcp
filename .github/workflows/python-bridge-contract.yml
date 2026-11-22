@@ -12,7 +12,7 @@ on:
 # Avoid duplicate push+PR runs, and discard obsolete tests on older commits.
 # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
 concurrency:
-  group: python-bridge-${{ github.ref }}
+  group: python-bridge-v2-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
