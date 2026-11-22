@@ -27,6 +27,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # Pinned version used by Microsoft's calculator repository:
+      # https://github.com/microsoft/calculator/blob/main/.github/workflows/action-ci.yml
+      - name: Set up Microsoft Visual C++ compiler
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
       - name: Install actual MCP server dependencies
         run: python -m pip install -e ./Python
       - name: Check syntax of bridge and test
