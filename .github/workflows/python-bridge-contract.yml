@@ -45,6 +45,8 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_unreal_bridge*.py' -v
       - name: Compile and execute portable native framing tests
         run: python -m unittest discover -s tests -p 'test_native_line_framing_compiled.py' -v
+      - name: Execute production Python against compiled C++ TCP stand-in
+        run: python -m unittest discover -s tests -p 'test_cpp_tcp_interop.py' -v
       - name: Check actual native C++ / Python protocol agreement
         run: python -m unittest discover -s tests -p 'test_native_protocol_contract.py' -v
       - name: Run MCP entrypoint and full TCP round-trip tests
