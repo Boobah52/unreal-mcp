@@ -85,6 +85,8 @@ class BridgeContractTests(unittest.TestCase):
         self.assertEqual(json.loads(wire[0].decode("utf-8"))["command"], "get_actors_in_level")
         self.assertEqual(json.loads(wire[1].decode("utf-8"))["params"], {"blueprint_name": "BP_Test"})
         for payload in wire:
+            self.assertTrue(payload.endswith(b"\n"), "Native transport requires newline frames")
+            self.assertEqual(payload.count(b"\n"), 1)
             self.assertNotIn(bytes([0]), payload)
             self.assertIsInstance(json.loads(payload.decode("utf-8")), dict)
 
