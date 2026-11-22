@@ -79,51 +79,43 @@ class UnrealConnection:
         self.connected = False
 
     def receive_full_response(self, sock, buffer_size=4096) -> bytes:
-        """Receive a complete response from Unreal, handling chunked data."""
-        chunks = []
-        sock.settimeout(5)  # 5 second timeout
+        """Read one bounded, newline-terminated UTF-8 JSON reply.
+
+        Do not report a syntactically complete but unterminated JSON fragment as
+        success. TCP reads are arbitrary byte chunks, not message boundaries.
+        """
+        max_response_bytes = 8 * 1024 * 1024
+        received = bytearray()
+        sock.settimeout(120)
         try:
             while True:
                 chunk = sock.recv(buffer_size)
                 if not chunk:
-                    if not chunks:
-                        raise Exception("Connection closed before receiving data")
-                    break
-                chunks.append(chunk)
-                
-                # Process the data received so far
-                data = b''.join(chunks)
-                # An individual recv() may end halfway through a UTF-8 character.
-                # Treat incomplete decoding and incomplete JSON alike until more
-                # network bytes arrive.
-                try:
-                    decoded_data = data.decode('utf-8')
-                    json.loads(decoded_data)
-                    logger.info(f"Received complete response ({len(data)} bytes)")
-                    return data
-                except (UnicodeDecodeError, json.JSONDecodeError):
-                    # May be a partial character or JSON document; read more bytes.
-                    logger.debug(f"Received partial response, waiting for more data...")
+                    raise ConnectionError(
+                        "Unreal closed the connection before response LF terminator"
+                    )
+                received.extend(chunk)
+                if len(received) > max_response_bytes + 2:
+                    raise ValueError("Unreal response exceeded 8 MiB limit")
+                terminator = received.find(b'\n')
+                if terminator < 0:
                     continue
-                except Exception as e:
-                    logger.warning(f"Error processing response chunk: {str(e)}")
-                    continue
-        except socket.timeout:
-            logger.warning("Socket timeout during receive")
-            if chunks:
-                # If we have some data already, try to use it
-                data = b''.join(chunks)
-                try:
-                    json.loads(data.decode('utf-8'))
-                    logger.info(f"Using partial response after timeout ({len(data)} bytes)")
-                    return data
-                except:
-                    pass
-            raise Exception("Timeout receiving Unreal response")
-        except Exception as e:
-            logger.error(f"Error during receive: {str(e)}")
-            raise
-    
+
+                line = bytes(received[:terminator])
+                if received[terminator + 1:]:
+                    raise ValueError("Multiple responses on single-request connection")
+                if line.endswith(b'\r'):
+                    line = line[:-1]
+                if len(line) > max_response_bytes:
+                    raise ValueError("Unreal response exceeded 8 MiB limit")
+                parsed = json.loads(line.decode('utf-8'))
+                if not isinstance(parsed, dict):
+                    raise ValueError("Unreal response must be a JSON object")
+                logger.info("Received framed Unreal response (%d bytes)", len(line))
+                return line
+        except socket.timeout as e:
+            raise TimeoutError("Timed out waiting for complete Unreal JSON response") from e
+
     def send_command(self, command: str, params: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
         """Send a command to Unreal Engine and get the response."""
         # Always reconnect for each command, since Unreal closes the connection after each command
