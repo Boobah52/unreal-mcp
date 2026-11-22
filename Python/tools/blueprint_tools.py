@@ -8,6 +8,7 @@ import logging
 from typing import Dict, List, Any
 from mcp.server.fastmcp import FastMCP, Context
 from tools._bridge_validation import require_unreal_success
+from tools._bridge_validation import require_unreal_success
 
 # Get logger
 logger = logging.getLogger("UnrealMCP")
@@ -82,21 +83,22 @@ def register_blueprint_tools(mcp: FastMCP):
                 param_value = params[param_name]
                 if not isinstance(param_value, list) or len(param_value) != 3:
                     logger.error(f"Invalid {param_name} format: {param_value}. Must be a list of 3 float values.")
-                    return {"success": False, "message": f"Invalid {param_name} format. Must be a list of 3 float values."}
+                    raise RuntimeError(f"Invalid {param_name} format. Must be a list of 3 float values.")
                 # Ensure all values are float
                 params[param_name] = [float(val) for val in param_value]
             
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
                 
             logger.info(f"Adding component to blueprint with params: {params}")
             response = unreal.send_command("add_component_to_blueprint", params)
+            response = require_unreal_success("add_component_to_blueprint", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Component addition response: {response}")
             return response
@@ -104,7 +106,7 @@ def register_blueprint_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error adding component to blueprint: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
     
     @mcp.tool()
     def set_static_mesh_properties(
@@ -130,7 +132,7 @@ def register_blueprint_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             params = {
                 "blueprint_name": blueprint_name,
@@ -140,10 +142,11 @@ def register_blueprint_tools(mcp: FastMCP):
             
             logger.info(f"Setting static mesh properties with params: {params}")
             response = unreal.send_command("set_static_mesh_properties", params)
+            response = require_unreal_success("set_static_mesh_properties", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Set static mesh properties response: {response}")
             return response
@@ -151,7 +154,7 @@ def register_blueprint_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error setting static mesh properties: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
     
     @mcp.tool()
     def set_component_property(
@@ -168,7 +171,7 @@ def register_blueprint_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             params = {
                 "blueprint_name": blueprint_name,
@@ -179,10 +182,11 @@ def register_blueprint_tools(mcp: FastMCP):
             
             logger.info(f"Setting component property with params: {params}")
             response = unreal.send_command("set_component_property", params)
+            response = require_unreal_success("set_component_property", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Set component property response: {response}")
             return response
@@ -190,7 +194,7 @@ def register_blueprint_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error setting component property: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
     
     @mcp.tool()
     def set_physics_properties(
@@ -210,7 +214,7 @@ def register_blueprint_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             params = {
                 "blueprint_name": blueprint_name,
@@ -224,10 +228,11 @@ def register_blueprint_tools(mcp: FastMCP):
             
             logger.info(f"Setting physics properties with params: {params}")
             response = unreal.send_command("set_physics_properties", params)
+            response = require_unreal_success("set_physics_properties", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Set physics properties response: {response}")
             return response
@@ -235,7 +240,7 @@ def register_blueprint_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error setting physics properties: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
     
     @mcp.tool()
     def compile_blueprint(ctx: Context, blueprint_name: str) -> Dict[str, Any]:
@@ -280,7 +285,7 @@ def register_blueprint_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             params = {
                 "blueprint_name": blueprint_name,
@@ -290,10 +295,11 @@ def register_blueprint_tools(mcp: FastMCP):
             
             logger.info(f"Setting blueprint property with params: {params}")
             response = unreal.send_command("set_blueprint_property", params)
+            response = require_unreal_success("set_blueprint_property", response)
             
             if not response:
                 logger.error("No response from Unreal Engine")
-                return {"success": False, "message": "No response from Unreal Engine"}
+                raise RuntimeError("No response from Unreal Engine")
             
             logger.info(f"Set blueprint property response: {response}")
             return response
@@ -301,7 +307,7 @@ def register_blueprint_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error setting blueprint property: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
 
     # @mcp.tool() commented out, just use set_component_property instead
     def set_pawn_properties(
@@ -334,7 +340,7 @@ def register_blueprint_tools(mcp: FastMCP):
             unreal = get_unreal_connection()
             if not unreal:
                 logger.error("Failed to connect to Unreal Engine")
-                return {"success": False, "message": "Failed to connect to Unreal Engine"}
+                raise RuntimeError("Failed to connect to Unreal Engine")
             
             # Define the properties to set
             properties = {}
@@ -368,6 +374,7 @@ def register_blueprint_tools(mcp: FastMCP):
                 
                 logger.info(f"Setting pawn property {prop_name} to {prop_value}")
                 response = unreal.send_command("set_blueprint_property", params)
+                response = require_unreal_success("set_blueprint_property", response)
                 
                 if not response:
                     logger.error(f"No response from Unreal Engine for property {prop_name}")
@@ -388,6 +395,6 @@ def register_blueprint_tools(mcp: FastMCP):
         except Exception as e:
             error_msg = f"Error setting pawn properties: {e}"
             logger.error(error_msg)
-            return {"success": False, "message": error_msg}
+            raise RuntimeError(error_msg)
     
     logger.info("Blueprint tools registered successfully") 
