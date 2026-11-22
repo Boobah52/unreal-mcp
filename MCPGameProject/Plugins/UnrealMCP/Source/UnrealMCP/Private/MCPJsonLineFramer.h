@@ -65,6 +65,10 @@ public:
         return true;
     }
 
+    // Expose unfinished pipelined bytes so callers can reject a second
+    // request rather than silently dropping one after acknowledging the first.
+    bool HasBufferedBytes() const { return !Pending.empty(); }
+
 private:
     std::size_t MaxFrameBytes;
     std::string Pending;
