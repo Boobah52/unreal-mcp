@@ -61,6 +61,34 @@ class McpEntrypointTests(unittest.TestCase):
                     )
         asyncio.run(check())
 
+    def test_disconnected_editor_must_fail_closed_for_search_and_mutation(self):
+        """MCP isError is the authoritative client-visible failure signal."""
+        async def check():
+            params = StdioServerParameters(
+                command=sys.executable,
+                args=[str(SERVER)],
+                env={**os.environ, "PYTHONUNBUFFERED": "1"},
+            )
+            async with stdio_client(params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await asyncio.wait_for(session.initialize(), timeout=20)
+                    requests = [
+                        ("find_actors_by_name", {"pattern": "UnlikelyActor_7283"}),
+                        ("delete_actor", {"name": "UnlikelyActor_7283"}),
+                        ("create_blueprint", {"name": "BP_Disconnected_7283", "parent_class": "Actor"}),
+                        ("compile_blueprint", {"blueprint_name": "BP_Disconnected_7283"}),
+                    ]
+                    for name, args in requests:
+                        with self.subTest(tool=name):
+                            result = await asyncio.wait_for(
+                                session.call_tool(name, args), timeout=20
+                            )
+                            self.assertTrue(
+                                result.isError,
+                                f"{name}: missing real Unreal must be MCP isError; got {result}",
+                            )
+        asyncio.run(check())
+
 
 if __name__ == "__main__":
     unittest.main()
