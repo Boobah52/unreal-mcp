@@ -33,11 +33,13 @@ class BackendHandler(socketserver.BaseRequestHandler):
             if not chunk:
                 raise ConnectionError("No complete JSON request from MCP server")
             raw += chunk
-            try:
-                request = json.loads(raw.decode("utf-8"))
-                break
-            except (UnicodeDecodeError, json.JSONDecodeError):
+            if b"\n" not in raw:
                 continue
+            framed, separator, extra = raw.partition(b"\n")
+            if extra:
+                raise ValueError("Extra bytes after one JSON request")
+            request = json.loads(framed.decode("utf-8"))
+            break
         self.server.received.append(request)
         response = {
             "status": "ok",
