@@ -19,7 +19,9 @@ jobs:
           from datetime import datetime
           output = pathlib.Path('transcripts')
           videos = [
-            ('jZqsb5wVrPs', 'Epic Live Creating Interactions Using Smart Objects and Gameplay Interactions')
+            ('wQoa1j4Rgss', 'UnrealFest Epic MetaHuman Crowds Unreal Engine 5.8'),
+            ('spI6iDz2XLY', 'Detour Crowd Manager UE5 5 minute guide'),
+            ('2mPymkxKTQQ', 'Unreal Engine 5 Motion Warping Guide')
           ]
           def get_json(url, headers={}):
               req=urllib.request.Request(url, headers=headers)
