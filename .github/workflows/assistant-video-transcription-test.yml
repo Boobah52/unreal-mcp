@@ -1,0 +1,97 @@
+name: Isolated YouTube transcription verification
+on:
+  push:
+    branches: [assistant-video-transcription-isolated-20261123]
+jobs:
+  transcribe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Retrieve captions or audio and transcribe
+        shell: bash
+        run: |
+          python -m pip install -q "yt-dlp[default]" youtube-transcript-api faster-whisper
+          mkdir -p transcripts
+          python - <<'PY'
+          import json, os, pathlib, re, subprocess, sys, urllib.request, urllib.parse
+          from datetime import datetime
+          output = pathlib.Path('transcripts')
+          videos = [
+            ('otyMGlLUk5c', 'CodeLikeMe UE5 Character Interactions 6 Carrying Boxes'),
+            ('Y5EUpKx8k_g', 'Short UE Niagara tutorial')
+          ]
+          def get_json(url, headers={}):
+              req=urllib.request.Request(url, headers=headers)
+              with urllib.request.urlopen(req, timeout=90) as r:
+                  return json.loads(r.read().decode('utf-8'))
+          key=None
+          try:
+              demo=get_json('https://youtube2text.org/api/demo-key')
+              key=demo.get('apiKey') if demo.get('success') else None
+              print('Demo key available:',bool(key),flush=True)
+          except Exception as e:
+              print('Demo key error:',type(e).__name__,str(e)[:170],flush=True)
+          for vid,title in videos:
+              print('VIDEO:',vid,title,flush=True)
+              text=None
+              method=None
+              url=f'https://www.youtube.com/watch?v={vid}'
+              if key:
+                  try:
+                      qs=urllib.parse.urlencode({'url':url,'maxChars':'150000'})
+                      result=get_json('https://youtube2text.org/api/transcribe?'+qs,{'x-api-key':key})
+                      record=result.get('result') or {}
+                      content=record.get('content')
+                      print('YT2TEXT response:',json.dumps({'success':result.get('success'),'title':record.get('title'),'length':len(content or ''),'truncated':record.get('truncated'),'code':result.get('code'),'error':result.get('error')},ensure_ascii=False)[:1100],flush=True)
+                      if content and not record.get('truncated'):
+                          text=content
+                          method='youtube2text'
+                  except Exception as e:
+                      print('YT2TEXT failure:',type(e).__name__,str(e)[:240],flush=True)
+              if not text:
+                  try:
+                      from youtube_transcript_api import YouTubeTranscriptApi
+                      chunks=YouTubeTranscriptApi().fetch(vid,languages=['en'])
+                      text='\n'.join(f'[{int(c.start//60):02d}:{int(c.start%60):02d}] {c.text}' for c in chunks)
+                      method='youtube_transcript_api'
+                      print('Caption segments:',len(chunks),flush=True)
+                  except Exception as e:
+                      print('Caption API failure:',type(e).__name__,str(e)[:240],flush=True)
+              if not text:
+                  print('Trying real audio download for',vid,flush=True)
+                  cmd=['yt-dlp','--no-playlist','-f','bestaudio/best','-o',str(output/(vid+'.%(ext)s')),url]
+                  try:
+                      p=subprocess.run(cmd,capture_output=True,text=True,timeout=180)
+                      print('yt-dlp exit:',p.returncode,(p.stderr or '')[-600:],flush=True)
+                      paths=[p for p in output.glob(vid+'.*') if p.suffix not in ['.txt','.json']]
+                      if paths:
+                          from faster_whisper import WhisperModel
+                          model=WhisperModel('tiny.en',device='cpu',compute_type='int8')
+                          segments,info=model.transcribe(str(paths[0]),language='en',vad_filter=True)
+                          bits=[]
+                          last_end=0
+                          for s in segments:
+                              bits.append(f'[{int(s.start//60):02d}:{int(s.start%60):02d}] {s.text.strip()}')
+                              last_end=s.end
+                          text='\n'.join(bits)
+                          method='faster_whisper_audio'
+                          print('ASR detected audio duration:',info.duration,'last speech end:',last_end,flush=True)
+                          for path in paths: path.unlink()
+                  except Exception as e:
+                      print('Audio ASR failure:',type(e).__name__,str(e)[:350],flush=True)
+              (output/(vid+'.status.json')).write_text(json.dumps({'id':vid,'title':title,'method':method,'char_count':len(text or ''),'success':bool(text)},indent=2))
+              if text:
+                  (output/(vid+'.txt')).write_text(text,encoding='utf-8')
+                  print('SUCCESS',vid,method,'chars',len(text),'start',repr(text[:85]),'end',repr(text[-100:]),flush=True)
+              else:
+                  print('FAILED TO TRANSCRIBE',vid,flush=True)
+          PY
+      - name: Preserve evidence and transcripts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ue-tutorial-transcript-results
+          path: transcripts/
+          if-no-files-found: warn
