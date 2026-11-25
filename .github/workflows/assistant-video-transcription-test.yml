@@ -19,14 +19,18 @@ jobs:
           from datetime import datetime
           output = pathlib.Path('transcripts')
           videos = [
-            ("doax4FU1-t0", "MetaHuman assembly"),
-            ("kmXaVIANa-c", "Game Animation Sample"),
-            ("wq0lY7vhF5w", "Chaos Cloth"),
-            ("nlbJwMoj1Dg", "Lumen lighting"),
-            ("ncokCVoN-oU", "PCG forest"),
-            ("bgxVHKSdL4M", "PCG graph template"),
-            ("QjcxmyOlnc4", "MetaSound procedural music"),
-            ("l6ew3hTDa8g", "MetaSound basics")
+            ("U8CkmOJg93M", "Exploring the New State Tree for AI, Unreal Fest Gold Coast 2024"),
+            ("X4-PFAb3th0", "A Deep Look into StateTree, Inside Unreal"),
+            ("YEmq4kcblj4", "State Tree Deep Dive, Unreal Fest 2024"),
+            ("srhqHMtgGcs", "Smart Ant: Building AI Behavior with State Tree and Smart Objects, Unreal Fest Bali 2025"),
+            ("N_suMyUuork", "Unreal Engine 5 Character and Animation Optimizations, Unreal Fest 2024"),
+            ("UQgrfijfwsY", "Unreal NPC AI - Basics and example project: Navigation, queuing and box transportation"),
+            ("xHQZQtgNn34", "Merchant Picks Up & Places Items for Customers, shop series EP 69"),
+            ("O3G5Yr3q7x0", "Mastering Smart Objects in Unreal Engine 5, Part 1"),
+            ("6-LHE1HOGC8", "How To Make The AI's Head Follow The Player In Unreal Engine 5"),
+            ("JQ4Qq9f8HXI", "How to Pick Up and Move Objects in Unreal Engine 5.8.3"),
+            ("DI2F-1iwOHA", "Receive OSC Messages within Blueprints"),
+            ("w-ys2nE-MgI", "VR Performance Fundamentals for Quest 3/3S")
           ]
           def get_json(url, headers={}):
               req=urllib.request.Request(url, headers=headers)
