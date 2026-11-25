@@ -19,10 +19,14 @@ jobs:
           from datetime import datetime
           output = pathlib.Path('transcripts')
           videos = [
-            ("TiDo_J4VOFA", "Epic Enhanced Input Action Mapping"),
-            ("pWdct3CCuwo", "Epic Displaying Widget Blueprints in UMG"),
-            ("I9BMOmdWoYE", "Epic Building a Coin Counter"),
-            ("Am1QOYEkVuM", "Epic Creating a Coin Counter in Blueprints")
+            ("doax4FU1-t0", "MetaHuman assembly"),
+            ("kmXaVIANa-c", "Game Animation Sample"),
+            ("wq0lY7vhF5w", "Chaos Cloth"),
+            ("nlbJwMoj1Dg", "Lumen lighting"),
+            ("ncokCVoN-oU", "PCG forest"),
+            ("bgxVHKSdL4M", "PCG graph template"),
+            ("QjcxmyOlnc4", "MetaSound procedural music"),
+            ("l6ew3hTDa8g", "MetaSound basics")
           ]
           def get_json(url, headers={}):
               req=urllib.request.Request(url, headers=headers)
